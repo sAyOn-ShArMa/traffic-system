@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kathmandu Traffic Management System</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f172a;
+        }
+
+        #map { height: 100vh; width: 100%; }
+
+        /* ── PANEL ── */
+        .panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: rgba(15, 23, 42, 0.96);
+            color: #e2e8f0;
+            border-radius: 14px;
+            padding: 22px;
+            width: 540px;
+            max-height: 95vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            border: 1px solid #1e293b;
+        }
+
+        .panel::-webkit-scrollbar { width: 6px; }
+        .panel::-webkit-scrollbar-track { background: transparent; }
+        .panel::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 18px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #1e293b;
+        }
+
+        .panel-header h2 {
+            font-size: 22px;
+            color: #f1f5f9;
+            font-weight: 700;
+        }
+
+        .live-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: #34d399;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .live-dot {
+            width: 8px; height: 8px;
+            background: #34d399;
+            border-radius: 50%;
+            animation: blink 1.5s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* ── STATS ── */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .stat-box {
+            background: #1e293b;
+            border-radius: 10px;
+            padding: 14px 10px;
+            text-align: center;
+            border: 1px solid #334155;
+            transition: border-color 0.3s;
+        }
+
+        .stat-box:hover { border-color: #475569; }
+
+        .stat-box .number {
+            font-size: 28px;
+            font-weight: 800;
+            color: #38bdf8;
+            line-height: 1;
+        }
+
+        .stat-box .label {
+            font-size: 10px;
+            color: #64748b;
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-box.danger .number { color: #f87171; }
+        .stat-box.warning .number { color: #fbbf24; }
+        .stat-box.success .number { color: #34d399; }
+
+        /* ── TOGGLES ── */
+        .toggle-section {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .toggle-btn {
+            background: #1e293b;
+            color: #64748b;
+            border: 1px solid #334155;
+            padding: 6px 14px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .toggle-btn.active {
+            background: #38bdf8;
+            color: #0f172a;
+            border-color: #38bdf8;
+        }
+
+        .toggle-btn:hover { border-color: #475569; }
+
+        /* ── TABS ── */
+        .section-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 14px;
+            background: #1e293b;
+            border-radius: 10px;
+            padding: 3px;
+        }
+
+        .section-tab {
+            flex: 1;
+            background: transparent;
+            color: #64748b;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .section-tab.active {
+            background: #334155;
+            color: #f1f5f9;
+        }
+
+        .tab-count {
+            display: inline-block;
+            background: #475569;
+            color: #cbd5e1;
+            padding: 1px 6px;
+            border-radius: 8px;
+            font-size: 10px;
+            margin-left: 4px;
+        }
+
+        .section-tab.active .tab-count {
+            background: #38bdf8;
+            color: #0f172a;
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* ── ACCIDENT CARD ── */
+        .accident-card {
+            background: #1e293b;
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 10px;
+            border-left: 4px solid #f87171;
+            transition: background 0.2s;
+            animation: fade-in 0.3s ease-out;
+        }
+
+        .accident-card:hover { background: #243044; }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .card-header .left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .accident-card p, .violation-card p {
+            font-size: 12px;
+            margin: 3px 0;
+            color: #94a3b8;
+        }
+
+        .vehicle-id {
+            font-weight: 700;
+            color: #f1f5f9;
+            font-size: 13px;
+        }
+
+        .location-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin: 6px 0;
+            flex-wrap: wrap;
+        }
+
+        .road-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #334155;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            color: #cbd5e1;
+        }
+
+        .road-badge svg {
+            width: 12px; height: 12px;
+            fill: #64748b;
+        }
+
+        .coords-text {
+            font-size: 10px;
+            color: #475569;
+            font-family: 'Courier New', monospace;
+        }
+
+        .description-text {
+            font-size: 11px;
+            color: #94a3b8;
+            font-style: italic;
+            margin: 4px 0;
+            line-height: 1.4;
+        }
+
+        .injuries-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            background: #7f1d1d;
+            color: #fca5a5;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 4px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+
+        /* ── VIOLATION CARD ── */
+        .violation-card {
+            background: #1e293b;
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 10px;
+            border-left: 4px solid #fbbf24;
+            transition: background 0.2s;
+            animation: fade-in 0.3s ease-out;
+        }
+
+        .violation-card:hover { background: #243044; }
+
+        .fine-badge {
+            display: inline-block;
+            background: #713f12;
+            color: #fde68a;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        .video-link {
+            color: #38bdf8;
+            text-decoration: none;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .video-link:hover { text-decoration: underline; }
+
+        /* ── BADGES ── */
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-minor { background: #164e63; color: #67e8f9; }
+        .badge-moderate { background: #713f12; color: #fde68a; }
+        .badge-severe { background: #7c2d12; color: #fdba74; }
+        .badge-fatal { background: #7f1d1d; color: #fca5a5; }
+        .badge-pending { background: #713f12; color: #fde68a; }
+        .badge-dispatched { background: #14532d; color: #86efac; }
+        .badge-resolved { background: #1e293b; color: #64748b; }
+        .badge-overspeeding { background: #7f1d1d; color: #fca5a5; }
+        .badge-wronglane { background: #7c2d12; color: #fdba74; }
+        .badge-redlight { background: #581c87; color: #d8b4fe; }
+        .badge-nohelmet { background: #164e63; color: #67e8f9; }
+
+        /* ── BUTTONS ── */
+        .btn {
+            border: none;
+            padding: 5px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-dispatch { background: #dc2626; color: white; }
+        .btn-dispatch:hover { background: #b91c1c; }
+        .btn-dispatch.sent { background: #16a34a; cursor: default; }
+
+        .btn-locate { background: #4f46e5; color: white; }
+        .btn-locate:hover { background: #4338ca; }
+
+        .btn-resolve { background: #334155; color: #94a3b8; }
+        .btn-resolve:hover { background: #475569; }
+
+        .empty-state {
+            text-align: center;
+            color: #475569;
+            font-size: 13px;
+            padding: 24px;
+        }
+
+        /* ── POPUPS ── */
+        .leaflet-popup-content { margin: 10px 14px; line-height: 1.5; }
+
+        .popup-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+        .popup-row { font-size: 12px; color: #555; margin: 2px 0; }
+
+        .popup-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        /* ── ANIMATIONS ── */
+        @keyframes pulse-ring {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(3); opacity: 0; }
+        }
+
+        .accident-pulse {
+            animation: pulse-ring 1.5s ease-out infinite;
+        }
+
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <h2>Traffic Command Center</h2>
+            <div class="live-badge">
+                <div class="live-dot"></div>
+                LIVE
+            </div>
+        </div>
+
+        <div class="stat-grid">
+            <div class="stat-box">
+                <div class="number" id="statVehicles">0</div>
+                <div class="label">Vehicles</div>
+            </div>
+            <div class="stat-box danger">
+                <div class="number" id="statAccidents">0</div>
+                <div class="label">Accidents</div>
+            </div>
+            <div class="stat-box warning">
+                <div class="number" id="statViolations">0</div>
+                <div class="label">Violations</div>
+            </div>
+            <div class="stat-box success">
+                <div class="number" id="statSpeed">0</div>
+                <div class="label">Avg km/h</div>
+            </div>
+        </div>
+
+        <div class="toggle-section">
+            <button class="toggle-btn active" onclick="toggleLayer('vehicles', this)">Vehicles</button>
+            <button class="toggle-btn active" onclick="toggleLayer('accidents', this)">Accidents</button>
+            <button class="toggle-btn active" onclick="toggleLayer('violations', this)">Violations</button>
+            <button class="toggle-btn active" onclick="toggleLayer('heatmap', this)">Heatmap</button>
+            <button class="toggle-btn active" onclick="toggleLayer('signals', this)">Signals</button>
+        </div>
+
+        <div class="section-tabs">
+            <button class="section-tab active" onclick="switchTab('accidents', this)">
+                Accidents <span class="tab-count" id="tabAccidentCount">0</span>
+            </button>
+            <button class="section-tab" onclick="switchTab('violations', this)">
+                Violations <span class="tab-count" id="tabViolationCount">0</span>
+            </button>
+        </div>
+
+        <div id="tab-accidents" class="tab-content active">
+            <div id="accidentList"></div>
+        </div>
+
+        <div id="tab-violations" class="tab-content">
+            <div id="violationList"></div>
+        </div>
+    </div>
+
+    <script>
+        // ── MAP ──
+        const map = L.map('map', { zoomControl: false }).setView([27.7172, 85.3240], 14);
+        L.control.zoom({ position: 'bottomleft' }).addTo(map);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap &copy; CARTO',
+            maxZoom: 20
+        }).addTo(map);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', {
+            maxZoom: 20,
+            pane: 'overlayPane'
+        }).addTo(map);
+
+        // ── LAYERS ──
+        const vehicleLayer = L.layerGroup().addTo(map);
+        const accidentLayer = L.layerGroup().addTo(map);
+        const violationLayer = L.layerGroup().addTo(map);
+        const signalLayer = L.layerGroup().addTo(map);
+        let heatLayer = null;
+
+        const layers = { vehicles: vehicleLayer, accidents: accidentLayer, violations: violationLayer, signals: signalLayer, heatmap: null };
+        const showLayers = { vehicles: true, accidents: true, violations: true, signals: true, heatmap: true };
+
+        // ── CONFIG ──
+        const severityConfig = {
+            'Minor':    { color: '#22d3ee', size: 18, radius: 60 },
+            'Moderate': { color: '#fbbf24', size: 22, radius: 100 },
+            'Severe':   { color: '#f97316', size: 26, radius: 150 },
+            'Fatal':    { color: '#ef4444', size: 30, radius: 200 }
+        };
+
+        // ── ICONS ──
+        function vehicleIcon(speed) {
+            const color = speed > 80 ? '#ef4444' : speed > 50 ? '#fbbf24' : '#22c55e';
+            return L.divIcon({
+                html: `<div style="background:${color};width:10px;height:10px;border-radius:50%;border:2px solid white;box-shadow:0 0 8px ${color};"></div>`,
+                className: '', iconSize: [10, 10], iconAnchor: [5, 5]
+            });
+        }
+
+        function accidentMarkerIcon(severity) {
+            const cfg = severityConfig[severity] || severityConfig['Moderate'];
+            const ps = cfg.size + 14;
+            return L.divIcon({
+                html: `<div style="position:relative;width:${ps}px;height:${ps}px;display:flex;align-items:center;justify-content:center;">
+                    <div class="accident-pulse" style="position:absolute;width:${cfg.size}px;height:${cfg.size}px;border-radius:50%;background:${cfg.color};opacity:0.4;"></div>
+                    <div style="position:relative;background:${cfg.color};width:${cfg.size}px;height:${cfg.size}px;border-radius:50%;border:3px solid white;box-shadow:0 0 14px ${cfg.color};display:flex;align-items:center;justify-content:center;font-size:${Math.floor(cfg.size*0.5)}px;color:white;font-weight:bold;z-index:2;">!</div>
+                </div>`,
+                className: '', iconSize: [ps, ps], iconAnchor: [ps/2, ps/2]
+            });
+        }
+
+        const defaultViolationIcon = L.divIcon({
+            html: `<div style="background:#f59e0b;width:14px;height:14px;border-radius:3px;border:2px solid white;box-shadow:0 0 8px #f59e0b;transform:rotate(45deg);"></div>`,
+            className: '', iconSize: [14, 14], iconAnchor: [7, 7]
+        });
+
+        function signalMarkerIcon(state) {
+            return L.divIcon({
+                html: `<div style="background:#1e293b;width:12px;height:28px;border-radius:6px;border:2px solid #475569;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:2px;">
+                    <div style="width:6px;height:6px;border-radius:50%;background:${state==='Red'?'#ef4444':'#334155'};"></div>
+                    <div style="width:6px;height:6px;border-radius:50%;background:${state==='Yellow'?'#fbbf24':'#334155'};"></div>
+                    <div style="width:6px;height:6px;border-radius:50%;background:${state==='Green'?'#22c55e':'#334155'};"></div>
+                </div>`,
+                className: '', iconSize: [12, 28], iconAnchor: [6, 14]
+            });
+        }
+
+        // ── TAB SWITCH ──
+        function switchTab(tab, btn) {
+            document.querySelectorAll('.section-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('tab-' + tab).classList.add('active');
+        }
+
+        // ── LAYER TOGGLE ──
+        function toggleLayer(name, btn) {
+            showLayers[name] = !showLayers[name];
+            btn.classList.toggle('active');
+            if (name === 'heatmap') {
+                if (heatLayer) { showLayers.heatmap ? heatLayer.addTo(map) : map.removeLayer(heatLayer); }
+            } else {
+                showLayers[name] ? layers[name].addTo(map) : map.removeLayer(layers[name]);
+            }
+        }
+
+        // ── FETCH: VEHICLES ──
+        async function updateVehicles() {
+            try {
+                const data = await (await fetch('/api/vehicles/')).json();
+                vehicleLayer.clearLayers();
+                let count = 0, totalSpeed = 0;
+
+                for (const [vid, info] of Object.entries(data)) {
+                    count++;
+                    totalSpeed += info.speed;
+                    const m = L.marker([info.lat, info.lng], { icon: vehicleIcon(info.speed) });
+                    m.bindPopup(`<div class="popup-title">${vid}</div><div class="popup-row">Speed: <b>${info.speed.toFixed(1)} km/h</b></div><div class="popup-row" style="font-family:monospace;color:#999;">${info.lat.toFixed(5)}, ${info.lng.toFixed(5)}</div>`);
+                    vehicleLayer.addLayer(m);
+                }
+
+                document.getElementById('statVehicles').textContent = count;
+                document.getElementById('statSpeed').textContent = count > 0 ? (totalSpeed / count).toFixed(0) : '0';
+            } catch (e) { console.error('Vehicle error:', e); }
+        }
+
+        // ── FETCH: ACCIDENTS ──
+        async function updateAccidents() {
+            try {
+                const data = await (await fetch('/api/accidents/')).json();
+                accidentLayer.clearLayers();
+
+                document.getElementById('statAccidents').textContent = data.filter(a => a.status !== 'Resolved').length;
+                document.getElementById('tabAccidentCount').textContent = data.filter(a => a.status !== 'Resolved').length;
+
+                const activeAccidents = data.filter(a => a.status !== 'Resolved');
+
+                let html = '';
+                data.forEach(a => {
+                    const cfg = severityConfig[a.severity] || severityConfig['Moderate'];
+
+                    // Only show markers on map for non-resolved accidents
+                    if (a.status !== 'Resolved') {
+                        const m = L.marker([a.lat, a.lng], { icon: accidentMarkerIcon(a.severity) });
+                        m.bindPopup(`<div><span class="popup-badge" style="background:${cfg.color};color:white;">${a.severity}</span> <b>Accident</b><div class="popup-row"><b>${a.road_name}</b></div><div class="popup-row" style="font-style:italic;color:#777;">${a.description}</div><div class="popup-row">Vehicle: ${a.vehicle} | Injuries: ${a.injuries}</div><div class="popup-row">Time: ${a.time}</div><div class="popup-row" style="font-family:monospace;color:#999;">${a.lat.toFixed(5)}, ${a.lng.toFixed(5)}</div><div class="popup-row">Status: ${a.status}</div></div>`);
+                        accidentLayer.addLayer(m);
+
+                        accidentLayer.addLayer(L.circle([a.lat, a.lng], {
+                            radius: cfg.radius, color: cfg.color, fillColor: cfg.color,
+                            fillOpacity: 0.06, weight: 1, dashArray: '6,4'
+                        }));
+                    }
+
+                    // Skip resolved accidents from panel list
+                    if (a.status === 'Resolved') return;
+
+                    const isPending = a.status === 'Pending';
+                    const sevClass = 'badge-' + a.severity.toLowerCase();
+                    const statusClass = isPending ? 'badge-pending' : 'badge-dispatched';
+
+                    html += `<div class="accident-card" style="border-left-color:${cfg.color};">
+                        <div class="card-header">
+                            <div class="left">
+                                <span class="badge ${sevClass}">${a.severity}</span>
+                                <span class="vehicle-id">${a.vehicle}</span>
+                            </div>
+                            <span style="font-size:11px;color:#475569;">${a.time}</span>
+                        </div>
+                        <div class="location-row">
+                            <span class="road-badge">
+                                <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                                ${a.road_name}
+                            </span>
+                            ${a.injuries > 0 ? `<span class="injuries-badge">${a.injuries} injured</span>` : ''}
+                        </div>
+                        <div class="description-text">${a.description}</div>
+                        <div class="coords-text">${a.lat.toFixed(5)}, ${a.lng.toFixed(5)}</div>
+                        <p><span class="badge ${statusClass}">${a.status}</span></p>
+                        <div class="card-actions">
+                            <button class="btn btn-locate" onclick="locateAccident(${a.lat},${a.lng},'${a.vehicle}')">Locate</button>
+                            <button class="btn btn-dispatch" onclick="dispatchUnit(${a.id},'Ambulance',this)">Ambulance</button>
+                            <button class="btn btn-dispatch" onclick="dispatchUnit(${a.id},'Police',this)">Police</button>
+                            <button class="btn btn-dispatch" onclick="dispatchUnit(${a.id},'Fire',this)">Fire</button>
+                            <button class="btn btn-dispatch" onclick="dispatchUnit(${a.id},'Traffic Police',this)">Traffic</button>
+                            <button class="btn btn-dispatch" onclick="dispatchUnit(${a.id},'Tow Truck',this)">Tow Truck</button>
+                            <button class="btn btn-dispatch" onclick="dispatchUnit(${a.id},'Rescue Team',this)">Rescue</button>
+                            <button class="btn btn-resolve" onclick="resolveAccident(${a.id})">Resolve</button>
+                        </div>
+                    </div>`;
+                });
+
+                document.getElementById('accidentList').innerHTML = html || '<div class="empty-state">No accidents reported</div>';
+            } catch (e) { console.error('Accident error:', e); }
+        }
+
+        // ── FETCH: VIOLATIONS ──
+        async function updateViolations() {
+            try {
+                const data = await (await fetch('/api/violations/')).json();
+                violationLayer.clearLayers();
+
+                document.getElementById('statViolations').textContent = data.length;
+                document.getElementById('tabViolationCount').textContent = data.length;
+
+                let html = '';
+                data.forEach(v => {
+                    const m = L.marker([v.lat, v.lng], { icon: defaultViolationIcon });
+                    m.bindPopup(`<div class="popup-title">${v.violation_type}</div><div class="popup-row">Vehicle: ${v.vehicle}</div><div class="popup-row">Speed: ${v.speed} km/h | Lane: ${v.lane}</div><div class="popup-row">Fine: Rs. ${v.fine}</div><div class="popup-row">Time: ${v.time}</div><a href="/static/videos/${v.video}" target="_blank" style="font-size:12px;">View Clip</a>`);
+                    violationLayer.addLayer(m);
+
+                    const typeKey = v.violation_type.replace(/\s+/g, '').toLowerCase();
+                    html += `<div class="violation-card">
+                        <div class="card-header">
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <span class="badge badge-${typeKey}">${v.violation_type}</span>
+                                <span class="vehicle-id">${v.vehicle}</span>
+                            </div>
+                            <span style="font-size:11px;color:#475569;">${v.time}</span>
+                        </div>
+                        <p>Speed: ${v.speed} km/h &middot; Lane: ${v.lane}</p>
+                        <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+                            <span class="fine-badge">Fine: Rs. ${v.fine}</span>
+                            <a class="video-link" href="/static/videos/${v.video}" target="_blank">View Clip</a>
+                        </div>
+                    </div>`;
+                });
+
+                document.getElementById('violationList').innerHTML = html || '<div class="empty-state">No violations recorded</div>';
+            } catch (e) { console.error('Violation error:', e); }
+        }
+
+        // ── FETCH: HEATMAP ──
+        async function updateCongestion() {
+            try {
+                const data = await (await fetch('/api/congestion/')).json();
+                if (heatLayer) map.removeLayer(heatLayer);
+                if (data.length > 0) {
+                    heatLayer = L.heatLayer(data, {
+                        radius: 30, blur: 20, maxZoom: 17,
+                        gradient: { 0.2: '#22c55e', 0.4: '#fbbf24', 0.6: '#f97316', 0.8: '#ef4444', 1.0: '#dc2626' }
+                    });
+                    if (showLayers.heatmap) heatLayer.addTo(map);
+                }
+            } catch (e) { console.error('Congestion error:', e); }
+        }
+
+        // ── FETCH: SIGNALS ──
+        async function updateSignals() {
+            try {
+                const data = await (await fetch('/api/signals/')).json();
+                signalLayer.clearLayers();
+                data.forEach(s => {
+                    const m = L.marker([s.lat, s.lng], { icon: signalMarkerIcon(s.state) });
+                    m.bindPopup(`<div class="popup-title">${s.name}</div><div class="popup-row">State: <b style="color:${s.state==='Red'?'#ef4444':s.state==='Yellow'?'#fbbf24':'#22c55e'}">${s.state}</b></div><div class="popup-row">Cycle: ${s.cycle_time}s</div>`);
+                    signalLayer.addLayer(m);
+                });
+            } catch (e) { console.error('Signal error:', e); }
+        }
+
+        // ── ACTIONS ──
+        async function dispatchUnit(id, unit, btn) {
+            try {
+                const data = await (await fetch('/api/dispatch/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ accident_id: id, unit: unit })
+                })).json();
+                if (data.success) {
+                    btn.textContent = unit + ' Sent';
+                    btn.classList.add('sent');
+                    btn.disabled = true;
+                    setTimeout(updateAccidents, 500);
+                }
+            } catch (e) { console.error('Dispatch error:', e); }
+        }
+
+        async function resolveAccident(id) {
+            try {
+                const data = await (await fetch('/api/resolve/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ accident_id: id })
+                })).json();
+                if (data.success) setTimeout(updateAccidents, 300);
+            } catch (e) { console.error('Resolve error:', e); }
+        }
+
+        function locateAccident(lat, lng, vehicle) {
+            map.flyTo([lat, lng], 17, { duration: 1 });
+            const icon = L.divIcon({
+                html: `<div style="position:relative;">
+                    <div style="width:60px;height:60px;border:3px solid #ef4444;border-radius:50%;animation:pulse-ring 1s ease-out 4;"></div>
+                    <div style="position:absolute;top:-22px;left:50%;transform:translateX(-50%);background:#ef4444;color:white;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;white-space:nowrap;">${vehicle}</div>
+                </div>`,
+                className: '', iconSize: [60, 60], iconAnchor: [30, 30]
+            });
+            const m = L.marker([lat, lng], { icon: icon }).addTo(map);
+            setTimeout(() => map.removeLayer(m), 5000);
+        }
+
+        // ── REFRESH ──
+        function refreshAll() {
+            updateVehicles();
+            updateAccidents();
+            updateViolations();
+            updateCongestion();
+            updateSignals();
+        }
+
+        refreshAll();
+        setInterval(refreshAll, 2000);
+    </script>
+</body>
+</html>
