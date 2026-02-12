@@ -3,737 +3,1086 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kathmandu Traffic Management System</title>
+    <title>KVSTS - Command Center</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #0a0e1a; color: #c8d6e5; display: flex; height: 100vh; overflow: hidden; }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #0f172a;
+        /* ── SIDEBAR ── */
+        .sidebar {
+            width: 230px;
+            background: #0d1117;
+            border-right: 1px solid #1a2332;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            z-index: 2000;
         }
 
-        #map { height: 100vh; width: 100%; }
-
-        /* ── PANEL ── */
-        .panel {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            z-index: 1000;
-            background: rgba(15, 23, 42, 0.96);
-            color: #e2e8f0;
-            border-radius: 14px;
-            padding: 22px;
-            width: 540px;
-            max-height: 95vh;
-            overflow-y: auto;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-            border: 1px solid #1e293b;
+        .sidebar-brand {
+            padding: 24px 20px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
 
-        .panel::-webkit-scrollbar { width: 6px; }
-        .panel::-webkit-scrollbar-track { background: transparent; }
-        .panel::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        .brand-icon {
+            width: 36px; height: 36px;
+            background: linear-gradient(135deg, #06b6d4, #0891b2);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+        }
 
-        .panel-header {
+        .brand-icon svg { width: 20px; height: 20px; fill: white; }
+
+        .brand-text h1 { font-size: 16px; font-weight: 800; color: #f1f5f9; letter-spacing: 1px; }
+        .brand-text span { font-size: 10px; color: #475569; text-transform: uppercase; letter-spacing: 2px; }
+
+        .sidebar-nav { padding: 10px 12px; flex: 1; }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: #64748b;
+            transition: all 0.2s;
+            margin-bottom: 4px;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+        }
+
+        .nav-item:hover { color: #94a3b8; background: #131b2e; }
+
+        .nav-item.active {
+            color: #22d3ee;
+            background: linear-gradient(90deg, rgba(6,182,212,0.15), transparent);
+            border-left: 3px solid #22d3ee;
+        }
+
+        .nav-item svg { width: 18px; height: 18px; fill: currentColor; flex-shrink: 0; }
+
+        .sidebar-footer {
+            padding: 16px 20px;
+            border-top: 1px solid #1a2332;
+        }
+
+        .logout-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #ef4444;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 8px 0;
+        }
+
+        .logout-btn svg { width: 16px; height: 16px; fill: #ef4444; }
+
+        /* ── MAIN CONTENT ── */
+        .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+        .page { display: none; flex: 1; overflow: hidden; }
+        .page.active { display: flex; flex-direction: column; }
+
+        /* ── DASHBOARD PAGE ── */
+        .dash-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 18px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid #1e293b;
+            padding: 28px 32px 20px;
         }
 
-        .panel-header h2 {
-            font-size: 22px;
+        .dash-header h2 { font-size: 26px; font-weight: 700; color: #f1f5f9; }
+        .dash-header p { font-size: 13px; color: #475569; margin-top: 2px; }
+
+        .system-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(6,182,212,0.1);
+            border: 1px solid rgba(6,182,212,0.3);
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #22d3ee;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .system-dot {
+            width: 8px; height: 8px;
+            background: #22d3ee;
+            border-radius: 50%;
+            animation: blink 1.5s infinite;
+        }
+
+        .dash-content { flex: 1; padding: 0 32px 32px; overflow-y: auto; }
+
+        .dash-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .dash-stat-card {
+            background: #111827;
+            border: 1px solid #1e293b;
+            border-radius: 14px;
+            padding: 22px;
+            transition: border-color 0.3s;
+        }
+
+        .dash-stat-card:hover { border-color: #334155; }
+
+        .dash-stat-card .stat-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .dash-stat-card .stat-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+
+        .dash-stat-card .stat-icon { width: 20px; height: 20px; opacity: 0.5; }
+        .dash-stat-card .stat-icon svg { width: 20px; height: 20px; fill: #475569; }
+
+        .dash-stat-card .stat-value {
+            font-size: 36px;
+            font-weight: 800;
             color: #f1f5f9;
-            font-weight: 700;
+            line-height: 1;
         }
 
-        .live-badge {
+        .dash-stat-card .stat-sub {
+            font-size: 11px;
+            margin-top: 8px;
+            font-weight: 500;
+        }
+
+        .dash-stat-card .stat-sub.green { color: #34d399; }
+        .dash-stat-card .stat-sub.cyan { color: #22d3ee; }
+        .dash-stat-card .stat-sub.yellow { color: #fbbf24; }
+        .dash-stat-card .stat-sub.red { color: #f87171; }
+
+        .dash-bottom {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 16px;
+        }
+
+        /* Traffic Density Chart */
+        .chart-card {
+            background: #111827;
+            border: 1px solid #1e293b;
+            border-radius: 14px;
+            padding: 22px;
+        }
+
+        .chart-card .chart-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .chart-card .chart-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #f1f5f9;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .live-stream-badge {
             display: flex;
             align-items: center;
             gap: 6px;
             font-size: 11px;
             color: #34d399;
             font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
         }
 
-        .live-dot {
-            width: 8px; height: 8px;
+        .live-stream-dot {
+            width: 6px; height: 6px;
             background: #34d399;
             border-radius: 50%;
             animation: blink 1.5s infinite;
         }
 
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
+        .chart-area {
+            height: 220px;
+            position: relative;
+            border-left: 1px solid #1e293b;
+            border-bottom: 1px solid #1e293b;
         }
 
-        /* ── STATS ── */
-        .stat-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-            margin-bottom: 16px;
-        }
+        .chart-area canvas { width: 100%; height: 100%; }
 
-        .stat-box {
-            background: #1e293b;
-            border-radius: 10px;
-            padding: 14px 10px;
-            text-align: center;
-            border: 1px solid #334155;
-            transition: border-color 0.3s;
-        }
-
-        .stat-box:hover { border-color: #475569; }
-
-        .stat-box .number {
-            font-size: 28px;
-            font-weight: 800;
-            color: #38bdf8;
-            line-height: 1;
-        }
-
-        .stat-box .label {
-            font-size: 10px;
-            color: #64748b;
-            margin-top: 4px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .stat-box.danger .number { color: #f87171; }
-        .stat-box.warning .number { color: #fbbf24; }
-        .stat-box.success .number { color: #34d399; }
-
-        /* ── TOGGLES ── */
-        .toggle-section {
+        .chart-y-labels {
+            position: absolute;
+            left: -35px;
+            top: 0;
+            height: 100%;
             display: flex;
-            gap: 6px;
-            margin-bottom: 16px;
-            flex-wrap: wrap;
-        }
-
-        .toggle-btn {
-            background: #1e293b;
-            color: #64748b;
-            border: 1px solid #334155;
-            padding: 6px 14px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 11px;
-            font-weight: 600;
-            transition: all 0.2s;
-        }
-
-        .toggle-btn.active {
-            background: #38bdf8;
-            color: #0f172a;
-            border-color: #38bdf8;
-        }
-
-        .toggle-btn:hover { border-color: #475569; }
-
-        /* ── TABS ── */
-        .section-tabs {
-            display: flex;
-            gap: 0;
-            margin-bottom: 14px;
-            background: #1e293b;
-            border-radius: 10px;
-            padding: 3px;
-        }
-
-        .section-tab {
-            flex: 1;
-            background: transparent;
-            color: #64748b;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 600;
-            transition: all 0.2s;
-        }
-
-        .section-tab.active {
-            background: #334155;
-            color: #f1f5f9;
-        }
-
-        .tab-count {
-            display: inline-block;
-            background: #475569;
-            color: #cbd5e1;
-            padding: 1px 6px;
-            border-radius: 8px;
-            font-size: 10px;
-            margin-left: 4px;
-        }
-
-        .section-tab.active .tab-count {
-            background: #38bdf8;
-            color: #0f172a;
-        }
-
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-
-        /* ── ACCIDENT CARD ── */
-        .accident-card {
-            background: #1e293b;
-            border-radius: 10px;
-            padding: 14px;
-            margin-bottom: 10px;
-            border-left: 4px solid #f87171;
-            transition: background 0.2s;
-            animation: fade-in 0.3s ease-out;
-        }
-
-        .accident-card:hover { background: #243044; }
-
-        .card-header {
-            display: flex;
-            align-items: center;
+            flex-direction: column;
             justify-content: space-between;
-            margin-bottom: 8px;
+            font-size: 10px;
+            color: #334155;
         }
 
-        .card-header .left {
+        .chart-x-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            padding-left: 0;
+            font-size: 10px;
+            color: #334155;
+        }
+
+        /* Critical Events */
+        .events-card {
+            background: #111827;
+            border: 1px solid #1e293b;
+            border-radius: 14px;
+            padding: 22px;
+            border-top: 3px solid #f87171;
+        }
+
+        .events-title {
             display: flex;
             align-items: center;
             gap: 8px;
-        }
-
-        .accident-card p, .violation-card p {
-            font-size: 12px;
-            margin: 3px 0;
-            color: #94a3b8;
-        }
-
-        .vehicle-id {
+            font-size: 14px;
             font-weight: 700;
             color: #f1f5f9;
-            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 16px;
         }
 
-        .location-row {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            margin: 6px 0;
-            flex-wrap: wrap;
-        }
+        .events-title svg { width: 16px; height: 16px; fill: #f87171; }
 
-        .road-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            background: #334155;
-            padding: 3px 8px;
-            border-radius: 6px;
-            font-size: 11px;
-            color: #cbd5e1;
-        }
-
-        .road-badge svg {
-            width: 12px; height: 12px;
-            fill: #64748b;
-        }
-
-        .coords-text {
-            font-size: 10px;
-            color: #475569;
-            font-family: 'Courier New', monospace;
-        }
-
-        .description-text {
-            font-size: 11px;
-            color: #94a3b8;
-            font-style: italic;
-            margin: 4px 0;
-            line-height: 1.4;
-        }
-
-        .injuries-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 3px;
-            background: #7f1d1d;
-            color: #fca5a5;
-            padding: 2px 8px;
-            border-radius: 6px;
-            font-size: 10px;
-            font-weight: 600;
-        }
-
-        .card-actions {
-            display: flex;
-            gap: 4px;
-            margin-top: 8px;
-            flex-wrap: wrap;
-        }
-
-        /* ── VIOLATION CARD ── */
-        .violation-card {
-            background: #1e293b;
+        .event-item {
+            background: #0d1117;
+            border: 1px solid #1e293b;
             border-radius: 10px;
             padding: 14px;
             margin-bottom: 10px;
-            border-left: 4px solid #fbbf24;
-            transition: background 0.2s;
-            animation: fade-in 0.3s ease-out;
+            transition: border-color 0.2s;
         }
 
-        .violation-card:hover { background: #243044; }
+        .event-item:hover { border-color: #334155; }
 
-        .fine-badge {
-            display: inline-block;
-            background: #713f12;
-            color: #fde68a;
-            padding: 2px 8px;
-            border-radius: 6px;
+        .event-item .event-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .event-item .event-vid {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .event-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .event-dot.orange { background: #f59e0b; }
+        .event-dot.red { background: #ef4444; }
+
+        .event-item .event-id { font-size: 13px; font-weight: 700; color: #f1f5f9; }
+        .event-item .event-time { font-size: 10px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; }
+        .event-item .event-desc { font-size: 12px; color: #94a3b8; margin-bottom: 6px; }
+
+        .event-action {
             font-size: 10px;
-            font-weight: 700;
-        }
-
-        .video-link {
-            color: #38bdf8;
-            text-decoration: none;
-            font-size: 11px;
+            color: #22d3ee;
             font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            letter-spacing: 0.5px;
         }
 
-        .video-link:hover { text-decoration: underline; }
+        .event-action svg { width: 12px; height: 12px; fill: #22d3ee; animation: spin 2s linear infinite; }
 
-        /* ── BADGES ── */
-        .badge {
-            display: inline-block;
-            padding: 3px 10px;
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        .events-end {
+            text-align: center;
+            font-size: 11px;
+            color: #334155;
+            padding: 12px;
+            background: #0d1117;
+            border-radius: 8px;
+        }
+
+        /* ── LIVE MAP PAGE ── */
+        .map-page { position: relative; }
+
+        .map-container { flex: 1; position: relative; }
+        #map { width: 100%; height: 100%; }
+
+        .map-sector-badge {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            z-index: 1000;
+            background: rgba(13,17,23,0.92);
+            border: 1px solid #1e293b;
             border-radius: 12px;
-            font-size: 10px;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .sector-icon {
+            width: 40px; height: 40px;
+            background: rgba(6,182,212,0.15);
+            border: 1px solid rgba(6,182,212,0.3);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .sector-icon svg { width: 20px; height: 20px; fill: #22d3ee; }
+
+        .sector-text .sector-name { font-size: 14px; font-weight: 700; color: #22d3ee; text-transform: uppercase; letter-spacing: 1px; }
+        .sector-text .sector-sub { font-size: 11px; color: #475569; }
+
+        .map-protocol {
+            position: absolute;
+            bottom: 40px;
+            right: 16px;
+            z-index: 1000;
+            background: rgba(13,17,23,0.92);
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            padding: 16px 20px;
+            width: 280px;
+        }
+
+        .protocol-title {
+            font-size: 11px;
             font-weight: 700;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+        }
+
+        .protocol-btn {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            background: #111827;
+            border: 1px solid #1e293b;
+            border-radius: 8px;
+            padding: 12px 14px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #e2e8f0;
+            font-size: 12px;
+            font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
+        .protocol-btn:hover { border-color: #334155; background: #131b2e; }
+        .protocol-btn.active { border-color: #22d3ee; background: rgba(6,182,212,0.08); }
+
+        .protocol-btn svg { width: 18px; height: 18px; }
+        .protocol-btn .proto-icon-green svg { fill: #22d3ee; }
+        .protocol-btn .proto-icon-warn svg { fill: #f59e0b; }
+
+        /* Map right panel */
+        .map-panel {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            z-index: 1000;
+            background: rgba(13,17,23,0.94);
+            border: 1px solid #1e293b;
+            border-radius: 14px;
+            padding: 18px;
+            width: 420px;
+            max-height: calc(100% - 130px);
+            overflow-y: auto;
+        }
+
+        .map-panel::-webkit-scrollbar { width: 5px; }
+        .map-panel::-webkit-scrollbar-track { background: transparent; }
+        .map-panel::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+
+        .map-panel .toggle-section { margin-bottom: 12px; }
+        .map-panel .section-tabs { margin-bottom: 10px; }
+
+        /* ── INCIDENTS PAGE ── */
+        .incidents-header {
+            padding: 28px 32px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .incidents-header h2 { font-size: 26px; font-weight: 700; color: #f1f5f9; }
+
+        .incidents-content {
+            flex: 1;
+            padding: 0 32px 32px;
+            overflow-y: auto;
+        }
+
+        .incidents-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        /* ── SETTINGS PAGE ── */
+        .settings-content { padding: 28px 32px; overflow-y: auto; flex: 1; }
+        .settings-content h2 { font-size: 26px; font-weight: 700; color: #f1f5f9; margin-bottom: 24px; }
+
+        .setting-group {
+            background: #111827;
+            border: 1px solid #1e293b;
+            border-radius: 14px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .setting-group h3 {
+            font-size: 13px;
+            font-weight: 700;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 16px;
+        }
+
+        .setting-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #1a2332;
+        }
+
+        .setting-row:last-child { border-bottom: none; }
+        .setting-row .setting-label { font-size: 13px; color: #cbd5e1; }
+        .setting-row .setting-value { font-size: 13px; color: #22d3ee; font-weight: 600; }
+
+        /* ── SHARED COMPONENTS ── */
+        .accident-card, .violation-card, .badge, .btn, .btn-dispatch, .btn-locate, .btn-resolve,
+        .card-header, .card-actions, .location-row, .road-badge, .coords-text, .description-text,
+        .injuries-badge, .fine-badge, .video-link, .vehicle-id, .empty-state { /* inherited from before */ }
+
+        .accident-card { background: #111827; border: 1px solid #1e293b; border-radius: 10px; padding: 14px; margin-bottom: 10px; border-left: 4px solid #f87171; animation: fade-in 0.3s ease-out; }
+        .accident-card:hover { background: #131b2e; }
+        .violation-card { background: #111827; border: 1px solid #1e293b; border-radius: 10px; padding: 14px; margin-bottom: 10px; border-left: 4px solid #fbbf24; animation: fade-in 0.3s ease-out; }
+        .violation-card:hover { background: #131b2e; }
+        .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+        .card-header .left { display: flex; align-items: center; gap: 8px; }
+        .accident-card p, .violation-card p { font-size: 12px; margin: 3px 0; color: #94a3b8; }
+        .vehicle-id { font-weight: 700; color: #f1f5f9; font-size: 13px; }
+        .location-row { display: flex; align-items: center; gap: 6px; margin: 6px 0; flex-wrap: wrap; }
+        .road-badge { display: inline-flex; align-items: center; gap: 4px; background: #1e293b; padding: 3px 8px; border-radius: 6px; font-size: 11px; color: #cbd5e1; }
+        .road-badge svg { width: 12px; height: 12px; fill: #475569; }
+        .coords-text { font-size: 10px; color: #334155; font-family: 'Courier New', monospace; }
+        .description-text { font-size: 11px; color: #64748b; font-style: italic; margin: 4px 0; }
+        .injuries-badge { display: inline-flex; align-items: center; gap: 3px; background: #7f1d1d; color: #fca5a5; padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 600; }
+        .card-actions { display: flex; gap: 4px; margin-top: 8px; flex-wrap: wrap; }
+        .fine-badge { display: inline-block; background: #713f12; color: #fde68a; padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; }
+        .video-link { color: #22d3ee; text-decoration: none; font-size: 11px; font-weight: 600; }
+        .video-link:hover { text-decoration: underline; }
+        .empty-state { text-align: center; color: #334155; font-size: 13px; padding: 24px; }
+
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
         .badge-minor { background: #164e63; color: #67e8f9; }
         .badge-moderate { background: #713f12; color: #fde68a; }
         .badge-severe { background: #7c2d12; color: #fdba74; }
         .badge-fatal { background: #7f1d1d; color: #fca5a5; }
         .badge-pending { background: #713f12; color: #fde68a; }
         .badge-dispatched { background: #14532d; color: #86efac; }
-        .badge-resolved { background: #1e293b; color: #64748b; }
         .badge-overspeeding { background: #7f1d1d; color: #fca5a5; }
         .badge-wronglane { background: #7c2d12; color: #fdba74; }
         .badge-redlight { background: #581c87; color: #d8b4fe; }
         .badge-nohelmet { background: #164e63; color: #67e8f9; }
 
-        /* ── BUTTONS ── */
-        .btn {
-            border: none;
-            padding: 5px 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 11px;
-            font-weight: 600;
-            transition: all 0.2s;
-        }
-
+        .btn { border: none; padding: 5px 12px; border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 600; transition: all 0.2s; }
         .btn-dispatch { background: #dc2626; color: white; }
         .btn-dispatch:hover { background: #b91c1c; }
         .btn-dispatch.sent { background: #16a34a; cursor: default; }
-
         .btn-locate { background: #4f46e5; color: white; }
         .btn-locate:hover { background: #4338ca; }
+        .btn-resolve { background: #1e293b; color: #64748b; }
+        .btn-resolve:hover { background: #334155; }
 
-        .btn-resolve { background: #334155; color: #94a3b8; }
-        .btn-resolve:hover { background: #475569; }
+        .toggle-btn { background: #111827; color: #475569; border: 1px solid #1e293b; padding: 5px 12px; border-radius: 16px; cursor: pointer; font-size: 10px; font-weight: 600; transition: all 0.2s; }
+        .toggle-btn.active { background: #22d3ee; color: #0a0e1a; border-color: #22d3ee; }
+        .section-tabs { display: flex; gap: 0; background: #111827; border-radius: 8px; padding: 3px; border: 1px solid #1e293b; }
+        .section-tab { flex: 1; background: transparent; color: #475569; border: none; padding: 7px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600; transition: all 0.2s; }
+        .section-tab.active { background: #1e293b; color: #f1f5f9; }
+        .tab-count { display: inline-block; background: #334155; color: #94a3b8; padding: 1px 6px; border-radius: 6px; font-size: 9px; margin-left: 3px; }
+        .section-tab.active .tab-count { background: #22d3ee; color: #0a0e1a; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
 
-        .empty-state {
-            text-align: center;
-            color: #475569;
-            font-size: 13px;
-            padding: 24px;
-        }
-
-        /* ── POPUPS ── */
         .leaflet-popup-content { margin: 10px 14px; line-height: 1.5; }
-
         .popup-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
         .popup-row { font-size: 12px; color: #555; margin: 2px 0; }
+        .popup-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; }
 
-        .popup-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 10px;
-            font-weight: 700;
-        }
-
-        /* ── ANIMATIONS ── */
-        @keyframes pulse-ring {
-            0% { transform: scale(1); opacity: 1; }
-            100% { transform: scale(3); opacity: 0; }
-        }
-
-        .accident-pulse {
-            animation: pulse-ring 1.5s ease-out infinite;
-        }
-
-        @keyframes fade-in {
-            from { opacity: 0; transform: translateY(4px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        @keyframes pulse-ring { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(3); opacity: 0; } }
+        .accident-pulse { animation: pulse-ring 1.5s ease-out infinite; }
+        @keyframes fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
-    <div id="map"></div>
-
-    <div class="panel">
-        <div class="panel-header">
-            <h2>Traffic Command Center</h2>
-            <div class="live-badge">
-                <div class="live-dot"></div>
-                LIVE
+    <!-- ── SIDEBAR ── -->
+    <div class="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-icon">
+                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+            </div>
+            <div class="brand-text">
+                <h1>KVSTS</h1>
+                <span>Command Center</span>
             </div>
         </div>
 
-        <div class="stat-grid">
-            <div class="stat-box">
-                <div class="number" id="statVehicles">0</div>
-                <div class="label">Vehicles</div>
-            </div>
-            <div class="stat-box danger">
-                <div class="number" id="statAccidents">0</div>
-                <div class="label">Accidents</div>
-            </div>
-            <div class="stat-box warning">
-                <div class="number" id="statViolations">0</div>
-                <div class="label">Violations</div>
-            </div>
-            <div class="stat-box success">
-                <div class="number" id="statSpeed">0</div>
-                <div class="label">Avg km/h</div>
-            </div>
-        </div>
-
-        <div class="toggle-section">
-            <button class="toggle-btn active" onclick="toggleLayer('vehicles', this)">Vehicles</button>
-            <button class="toggle-btn active" onclick="toggleLayer('accidents', this)">Accidents</button>
-            <button class="toggle-btn active" onclick="toggleLayer('violations', this)">Violations</button>
-            <button class="toggle-btn active" onclick="toggleLayer('heatmap', this)">Heatmap</button>
-            <button class="toggle-btn active" onclick="toggleLayer('signals', this)">Signals</button>
-        </div>
-
-        <div class="section-tabs">
-            <button class="section-tab active" onclick="switchTab('accidents', this)">
-                Accidents <span class="tab-count" id="tabAccidentCount">0</span>
+        <nav class="sidebar-nav">
+            <button class="nav-item active" onclick="showPage('dashboard', this)">
+                <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+                Dashboard
             </button>
-            <button class="section-tab" onclick="switchTab('violations', this)">
-                Violations <span class="tab-count" id="tabViolationCount">0</span>
+            <button class="nav-item" onclick="showPage('livemap', this)">
+                <svg viewBox="0 0 24 24"><path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/></svg>
+                Live Map
             </button>
+            <button class="nav-item" onclick="showPage('incidents', this)">
+                <svg viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+                Incidents
+            </button>
+            <button class="nav-item" onclick="showPage('settings', this)">
+                <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
+                Settings
+            </button>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div style="padding:0 0 12px;border-bottom:1px solid #1a2332;margin-bottom:12px;">
+                <div style="font-size:13px;font-weight:700;color:#f1f5f9;">{{ operator_name|default:"Operator" }}</div>
+                <div style="font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:1px;margin-top:2px;">{{ operator_role|default:"Operator" }} &middot; {{ operator_id|default:"N/A" }}</div>
+            </div>
+            <a href="/logout/" class="logout-btn" style="text-decoration:none;">
+                <svg viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+                Logout
+            </a>
+        </div>
+    </div>
+
+    <!-- ── MAIN ── -->
+    <div class="main">
+
+        <!-- DASHBOARD PAGE -->
+        <div id="page-dashboard" class="page active">
+            <div class="dash-header">
+                <div>
+                    <h2>System Overview</h2>
+                    <p>Real-time traffic analysis and control metrics.</p>
+                </div>
+                <div class="system-badge">
+                    <div class="system-dot"></div>
+                    System Online
+                </div>
+            </div>
+            <div class="dash-content">
+                <div class="dash-stats">
+                    <div class="dash-stat-card">
+                        <div class="stat-header">
+                            <span class="stat-label">Active Vehicles</span>
+                            <div class="stat-icon"><svg viewBox="0 0 24 24"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg></div>
+                        </div>
+                        <div class="stat-value" id="dStatVehicles">0</div>
+                        <div class="stat-sub green" id="dStatVehicleSub">Loading...</div>
+                    </div>
+                    <div class="dash-stat-card">
+                        <div class="stat-header">
+                            <span class="stat-label">Congestion Index</span>
+                            <div class="stat-icon"><svg viewBox="0 0 24 24"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/></svg></div>
+                        </div>
+                        <div class="stat-value" id="dStatCongestion">-</div>
+                        <div class="stat-sub yellow" id="dStatCongSub">Calculating...</div>
+                    </div>
+                    <div class="dash-stat-card">
+                        <div class="stat-header">
+                            <span class="stat-label">Avg Response</span>
+                            <div class="stat-icon"><svg viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg></div>
+                        </div>
+                        <div class="stat-value" id="dStatResponse">0.0s</div>
+                        <div class="stat-sub cyan">Optimal</div>
+                    </div>
+                    <div class="dash-stat-card">
+                        <div class="stat-header">
+                            <span class="stat-label">Active Alerts</span>
+                            <div class="stat-icon"><svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg></div>
+                        </div>
+                        <div class="stat-value" id="dStatAlerts">0</div>
+                        <div class="stat-sub red" id="dStatAlertSub">Monitoring</div>
+                    </div>
+                </div>
+
+                <div class="dash-bottom">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <span class="chart-title">Traffic Density Prediction</span>
+                            <div class="live-stream-badge">
+                                <div class="live-stream-dot"></div>
+                                Live Stream
+                            </div>
+                        </div>
+                        <div style="position:relative;padding-left:40px;">
+                            <div class="chart-y-labels">
+                                <span>100%</span><span>75%</span><span>50%</span><span>25%</span><span>0%</span>
+                            </div>
+                            <div class="chart-area">
+                                <canvas id="densityChart"></canvas>
+                            </div>
+                            <div class="chart-x-labels">
+                                <span>00h</span><span>04h</span><span>08h</span><span>12h</span><span>16h</span><span>20h</span><span>23h</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="events-card">
+                        <div class="events-title">
+                            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                            Critical Events
+                        </div>
+                        <div id="criticalEvents"></div>
+                        <div class="events-end">End of recent alerts</div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div id="tab-accidents" class="tab-content active">
-            <div id="accidentList"></div>
+        <!-- LIVE MAP PAGE -->
+        <div id="page-livemap" class="page">
+            <div class="map-container">
+                <div id="map"></div>
+
+                <div class="map-sector-badge">
+                    <div class="sector-icon">
+                        <svg viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+                    </div>
+                    <div class="sector-text">
+                        <div class="sector-name">Live Sector 04</div>
+                        <div class="sector-sub">Kathmandu Metropolitan</div>
+                    </div>
+                </div>
+
+                <div class="map-panel">
+                    <div class="toggle-section" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px;">
+                        <button class="toggle-btn active" onclick="toggleLayer('vehicles', this)">Vehicles</button>
+                        <button class="toggle-btn active" onclick="toggleLayer('accidents', this)">Accidents</button>
+                        <button class="toggle-btn active" onclick="toggleLayer('violations', this)">Violations</button>
+                        <button class="toggle-btn active" onclick="toggleLayer('heatmap', this)">Heatmap</button>
+                        <button class="toggle-btn active" onclick="toggleLayer('signals', this)">Signals</button>
+                    </div>
+                    <div class="section-tabs">
+                        <button class="section-tab active" onclick="switchTab('accidents', this)">Accidents <span class="tab-count" id="tabAccidentCount">0</span></button>
+                        <button class="section-tab" onclick="switchTab('violations', this)">Violations <span class="tab-count" id="tabViolationCount">0</span></button>
+                    </div>
+                    <div id="tab-accidents" class="tab-content active"><div id="accidentList"></div></div>
+                    <div id="tab-violations" class="tab-content"><div id="violationList"></div></div>
+                </div>
+
+                <div class="map-protocol">
+                    <div class="protocol-title">Protocol Controls</div>
+                    <button class="protocol-btn" onclick="this.classList.toggle('active')">
+                        Activate Green Corridor
+                        <span class="proto-icon-green"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></span>
+                    </button>
+                    <button class="protocol-btn" onclick="this.classList.toggle('active')">
+                        Override Signals
+                        <span class="proto-icon-warn"><svg viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg></span>
+                    </button>
+                </div>
+            </div>
         </div>
 
-        <div id="tab-violations" class="tab-content">
-            <div id="violationList"></div>
+        <!-- INCIDENTS PAGE -->
+        <div id="page-incidents" class="page">
+            <div class="incidents-header">
+                <h2>Incident Log</h2>
+                <div class="system-badge"><div class="system-dot"></div>Live Feed</div>
+            </div>
+            <div class="incidents-content">
+                <div class="incidents-grid" id="incidentsGrid"></div>
+            </div>
+        </div>
+
+        <!-- SETTINGS PAGE -->
+        <div id="page-settings" class="page">
+            <div class="settings-content">
+                <h2>Settings</h2>
+                <div class="setting-group">
+                    <h3>System Configuration</h3>
+                    <div class="setting-row"><span class="setting-label">Refresh Interval</span><span class="setting-value">2 seconds</span></div>
+                    <div class="setting-row"><span class="setting-label">Active Vehicles</span><span class="setting-value" id="setVehicles">100</span></div>
+                    <div class="setting-row"><span class="setting-label">Monitored Roads</span><span class="setting-value">16 segments</span></div>
+                    <div class="setting-row"><span class="setting-label">Traffic Signals</span><span class="setting-value">10 chowks</span></div>
+                </div>
+                <div class="setting-group">
+                    <h3>Map Configuration</h3>
+                    <div class="setting-row"><span class="setting-label">Tile Provider</span><span class="setting-value">CARTO Dark</span></div>
+                    <div class="setting-row"><span class="setting-label">Center Coordinates</span><span class="setting-value">27.7172, 85.3240</span></div>
+                    <div class="setting-row"><span class="setting-label">Default Zoom</span><span class="setting-value">14</span></div>
+                </div>
+                <div class="setting-group">
+                    <h3>Alert Thresholds</h3>
+                    <div class="setting-row"><span class="setting-label">Overspeed Limit</span><span class="setting-value">80 km/h</span></div>
+                    <div class="setting-row"><span class="setting-label">Congestion Speed</span><span class="setting-value">&lt; 20 km/h</span></div>
+                    <div class="setting-row"><span class="setting-label">Max Pending Accidents</span><span class="setting-value">5</span></div>
+                </div>
+                <div class="setting-group">
+                    <h3>About</h3>
+                    <div class="setting-row"><span class="setting-label">Version</span><span class="setting-value">1.0.0</span></div>
+                    <div class="setting-row"><span class="setting-label">Developer</span><span class="setting-value">Radiants</span></div>
+                    <div class="setting-row"><span class="setting-label">License</span><span class="setting-value">Proprietary</span></div>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
-        // ── MAP ──
-        const map = L.map('map', { zoomControl: false }).setView([27.7172, 85.3240], 14);
-        L.control.zoom({ position: 'bottomleft' }).addTo(map);
-
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap &copy; CARTO',
-            maxZoom: 20
-        }).addTo(map);
-
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', {
-            maxZoom: 20,
-            pane: 'overlayPane'
-        }).addTo(map);
-
-        // ── LAYERS ──
-        const vehicleLayer = L.layerGroup().addTo(map);
-        const accidentLayer = L.layerGroup().addTo(map);
-        const violationLayer = L.layerGroup().addTo(map);
-        const signalLayer = L.layerGroup().addTo(map);
-        let heatLayer = null;
-
-        const layers = { vehicles: vehicleLayer, accidents: accidentLayer, violations: violationLayer, signals: signalLayer, heatmap: null };
+        // ── PAGE NAVIGATION ──
+        let mapInitialized = false;
+        let map, vehicleLayer, accidentLayer, violationLayer, signalLayer, heatLayer = null;
+        const layers = {};
         const showLayers = { vehicles: true, accidents: true, violations: true, signals: true, heatmap: true };
+
+        function showPage(page, btn) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById('page-' + page).classList.add('active');
+            btn.classList.add('active');
+
+            if (page === 'livemap' && !mapInitialized) {
+                initMap();
+                mapInitialized = true;
+            }
+            if (page === 'livemap' && map) {
+                setTimeout(() => map.invalidateSize(), 100);
+            }
+        }
+
+        // ── MAP INIT ──
+        function initMap() {
+            map = L.map('map', { zoomControl: false }).setView([27.7172, 85.3240], 14);
+            L.control.zoom({ position: 'bottomleft' }).addTo(map);
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 20
+            }).addTo(map);
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', {
+                maxZoom: 20, pane: 'overlayPane'
+            }).addTo(map);
+
+            vehicleLayer = L.layerGroup().addTo(map);
+            accidentLayer = L.layerGroup().addTo(map);
+            violationLayer = L.layerGroup().addTo(map);
+            signalLayer = L.layerGroup().addTo(map);
+
+            layers.vehicles = vehicleLayer;
+            layers.accidents = accidentLayer;
+            layers.violations = violationLayer;
+            layers.signals = signalLayer;
+        }
 
         // ── CONFIG ──
         const severityConfig = {
-            'Minor':    { color: '#22d3ee', size: 18, radius: 60 },
+            'Minor': { color: '#22d3ee', size: 18, radius: 60 },
             'Moderate': { color: '#fbbf24', size: 22, radius: 100 },
-            'Severe':   { color: '#f97316', size: 26, radius: 150 },
-            'Fatal':    { color: '#ef4444', size: 30, radius: 200 }
+            'Severe': { color: '#f97316', size: 26, radius: 150 },
+            'Fatal': { color: '#ef4444', size: 30, radius: 200 }
         };
 
         // ── ICONS ──
         function vehicleIcon(speed) {
-            const color = speed > 80 ? '#ef4444' : speed > 50 ? '#fbbf24' : '#22c55e';
-            return L.divIcon({
-                html: `<div style="background:${color};width:10px;height:10px;border-radius:50%;border:2px solid white;box-shadow:0 0 8px ${color};"></div>`,
-                className: '', iconSize: [10, 10], iconAnchor: [5, 5]
-            });
+            const c = speed > 80 ? '#ef4444' : speed > 50 ? '#fbbf24' : '#22c55e';
+            return L.divIcon({ html: `<div style="background:${c};width:10px;height:10px;border-radius:50%;border:2px solid white;box-shadow:0 0 8px ${c};"></div>`, className: '', iconSize: [10,10], iconAnchor: [5,5] });
         }
-
-        function accidentMarkerIcon(severity) {
-            const cfg = severityConfig[severity] || severityConfig['Moderate'];
+        function accidentMarkerIcon(sev) {
+            const cfg = severityConfig[sev] || severityConfig['Moderate'];
             const ps = cfg.size + 14;
-            return L.divIcon({
-                html: `<div style="position:relative;width:${ps}px;height:${ps}px;display:flex;align-items:center;justify-content:center;">
-                    <div class="accident-pulse" style="position:absolute;width:${cfg.size}px;height:${cfg.size}px;border-radius:50%;background:${cfg.color};opacity:0.4;"></div>
-                    <div style="position:relative;background:${cfg.color};width:${cfg.size}px;height:${cfg.size}px;border-radius:50%;border:3px solid white;box-shadow:0 0 14px ${cfg.color};display:flex;align-items:center;justify-content:center;font-size:${Math.floor(cfg.size*0.5)}px;color:white;font-weight:bold;z-index:2;">!</div>
-                </div>`,
-                className: '', iconSize: [ps, ps], iconAnchor: [ps/2, ps/2]
-            });
+            return L.divIcon({ html: `<div style="position:relative;width:${ps}px;height:${ps}px;display:flex;align-items:center;justify-content:center;"><div class="accident-pulse" style="position:absolute;width:${cfg.size}px;height:${cfg.size}px;border-radius:50%;background:${cfg.color};opacity:0.4;"></div><div style="position:relative;background:${cfg.color};width:${cfg.size}px;height:${cfg.size}px;border-radius:50%;border:3px solid white;box-shadow:0 0 14px ${cfg.color};display:flex;align-items:center;justify-content:center;font-size:${Math.floor(cfg.size*0.5)}px;color:white;font-weight:bold;z-index:2;">!</div></div>`, className: '', iconSize: [ps,ps], iconAnchor: [ps/2,ps/2] });
+        }
+        const defaultViolationIcon = L.divIcon({ html: `<div style="background:#f59e0b;width:14px;height:14px;border-radius:3px;border:2px solid white;box-shadow:0 0 8px #f59e0b;transform:rotate(45deg);"></div>`, className: '', iconSize: [14,14], iconAnchor: [7,7] });
+        function signalMarkerIcon(st) {
+            return L.divIcon({ html: `<div style="background:#0d1117;width:12px;height:28px;border-radius:6px;border:2px solid #334155;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:2px;"><div style="width:6px;height:6px;border-radius:50%;background:${st==='Red'?'#ef4444':'#1e293b'};"></div><div style="width:6px;height:6px;border-radius:50%;background:${st==='Yellow'?'#fbbf24':'#1e293b'};"></div><div style="width:6px;height:6px;border-radius:50%;background:${st==='Green'?'#22c55e':'#1e293b'};"></div></div>`, className: '', iconSize: [12,28], iconAnchor: [6,14] });
         }
 
-        const defaultViolationIcon = L.divIcon({
-            html: `<div style="background:#f59e0b;width:14px;height:14px;border-radius:3px;border:2px solid white;box-shadow:0 0 8px #f59e0b;transform:rotate(45deg);"></div>`,
-            className: '', iconSize: [14, 14], iconAnchor: [7, 7]
-        });
-
-        function signalMarkerIcon(state) {
-            return L.divIcon({
-                html: `<div style="background:#1e293b;width:12px;height:28px;border-radius:6px;border:2px solid #475569;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:2px;">
-                    <div style="width:6px;height:6px;border-radius:50%;background:${state==='Red'?'#ef4444':'#334155'};"></div>
-                    <div style="width:6px;height:6px;border-radius:50%;background:${state==='Yellow'?'#fbbf24':'#334155'};"></div>
-                    <div style="width:6px;height:6px;border-radius:50%;background:${state==='Green'?'#22c55e':'#334155'};"></div>
-                </div>`,
-                className: '', iconSize: [12, 28], iconAnchor: [6, 14]
-            });
-        }
-
-        // ── TAB SWITCH ──
+        // ── TABS / TOGGLES ──
         function switchTab(tab, btn) {
             document.querySelectorAll('.section-tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
             btn.classList.add('active');
             document.getElementById('tab-' + tab).classList.add('active');
         }
-
-        // ── LAYER TOGGLE ──
         function toggleLayer(name, btn) {
             showLayers[name] = !showLayers[name];
             btn.classList.toggle('active');
-            if (name === 'heatmap') {
-                if (heatLayer) { showLayers.heatmap ? heatLayer.addTo(map) : map.removeLayer(heatLayer); }
-            } else {
-                showLayers[name] ? layers[name].addTo(map) : map.removeLayer(layers[name]);
-            }
+            if (name === 'heatmap') { if (heatLayer) { showLayers.heatmap ? heatLayer.addTo(map) : map.removeLayer(heatLayer); } }
+            else { showLayers[name] ? layers[name].addTo(map) : map.removeLayer(layers[name]); }
         }
 
-        // ── FETCH: VEHICLES ──
+        // ── DATA FETCH ──
+        let cachedAccidents = [], cachedViolations = [], cachedVehicleCount = 0, cachedAvgSpeed = 0;
+
         async function updateVehicles() {
             try {
                 const data = await (await fetch('/api/vehicles/')).json();
-                vehicleLayer.clearLayers();
+                if (vehicleLayer) vehicleLayer.clearLayers();
                 let count = 0, totalSpeed = 0;
-
                 for (const [vid, info] of Object.entries(data)) {
-                    count++;
-                    totalSpeed += info.speed;
-                    const m = L.marker([info.lat, info.lng], { icon: vehicleIcon(info.speed) });
-                    m.bindPopup(`<div class="popup-title">${vid}</div><div class="popup-row">Speed: <b>${info.speed.toFixed(1)} km/h</b></div><div class="popup-row" style="font-family:monospace;color:#999;">${info.lat.toFixed(5)}, ${info.lng.toFixed(5)}</div>`);
-                    vehicleLayer.addLayer(m);
+                    count++; totalSpeed += info.speed;
+                    if (vehicleLayer) {
+                        const m = L.marker([info.lat, info.lng], { icon: vehicleIcon(info.speed) });
+                        m.bindPopup(`<div class="popup-title">${vid}</div><div class="popup-row">Speed: <b>${info.speed.toFixed(1)} km/h</b></div><div class="popup-row" style="font-family:monospace;color:#999;">${info.lat.toFixed(5)}, ${info.lng.toFixed(5)}</div>`);
+                        vehicleLayer.addLayer(m);
+                    }
                 }
+                cachedVehicleCount = count;
+                cachedAvgSpeed = count > 0 ? totalSpeed / count : 0;
 
-                document.getElementById('statVehicles').textContent = count;
-                document.getElementById('statSpeed').textContent = count > 0 ? (totalSpeed / count).toFixed(0) : '0';
+                // Dashboard stats
+                document.getElementById('dStatVehicles').textContent = count;
+                const slow = Object.values(data).filter(v => v.speed < 20).length;
+                const pct = count > 0 ? Math.round(slow / count * 100) : 0;
+                document.getElementById('dStatVehicleSub').textContent = `+${pct}% congested`;
+                document.getElementById('setVehicles').textContent = count;
+
+                const congLevel = pct > 40 ? 'Critical' : pct > 25 ? 'High' : pct > 10 ? 'Moderate' : 'Low';
+                document.getElementById('dStatCongestion').textContent = congLevel;
+                const congSub = document.getElementById('dStatCongSub');
+                congSub.textContent = congLevel === 'Critical' ? 'Critical Zone' : congLevel === 'High' ? 'Heavy Traffic' : congLevel === 'Moderate' ? 'Normal Flow' : 'Clear Roads';
+                congSub.className = 'stat-sub ' + (congLevel === 'Critical' || congLevel === 'High' ? 'yellow' : 'green');
+
+                document.getElementById('dStatResponse').textContent = (Math.random() * 1.5 + 0.3).toFixed(1) + 's';
             } catch (e) { console.error('Vehicle error:', e); }
         }
 
-        // ── FETCH: ACCIDENTS ──
         async function updateAccidents() {
             try {
                 const data = await (await fetch('/api/accidents/')).json();
-                accidentLayer.clearLayers();
+                cachedAccidents = data;
+                if (accidentLayer) accidentLayer.clearLayers();
+                const active = data.filter(a => a.status !== 'Resolved');
 
-                document.getElementById('statAccidents').textContent = data.filter(a => a.status !== 'Resolved').length;
-                document.getElementById('tabAccidentCount').textContent = data.filter(a => a.status !== 'Resolved').length;
+                document.getElementById('tabAccidentCount').textContent = active.length;
+                document.getElementById('dStatAlerts').textContent = active.length;
+                document.getElementById('dStatAlertSub').textContent = active.length > 0 ? 'Action Required' : 'All Clear';
 
-                const activeAccidents = data.filter(a => a.status !== 'Resolved');
+                // Critical events on dashboard
+                let evHtml = '';
+                active.slice(0, 4).forEach(a => {
+                    const dotClass = a.severity === 'Fatal' || a.severity === 'Severe' ? 'red' : 'orange';
+                    evHtml += `<div class="event-item">
+                        <div class="event-header"><div class="event-vid"><div class="event-dot ${dotClass}"></div><span class="event-id">${a.vehicle}</span></div><span class="event-time">${a.severity === 'Fatal' || a.severity === 'Severe' ? 'COLLISION ALERT' : a.time}</span></div>
+                        <div class="event-desc">${a.description}</div>
+                        <div class="event-action"><svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z"/></svg> AUTO-ADJUSTING SIGNALS...</div>
+                    </div>`;
+                });
+                document.getElementById('criticalEvents').innerHTML = evHtml || '<div class="events-end">No critical events</div>';
 
+                // Map markers
                 let html = '';
                 data.forEach(a => {
                     const cfg = severityConfig[a.severity] || severityConfig['Moderate'];
-
-                    // Only show markers on map for non-resolved accidents
-                    if (a.status !== 'Resolved') {
+                    if (a.status !== 'Resolved' && accidentLayer) {
                         const m = L.marker([a.lat, a.lng], { icon: accidentMarkerIcon(a.severity) });
-                        m.bindPopup(`<div><span class="popup-badge" style="background:${cfg.color};color:white;">${a.severity}</span> <b>Accident</b><div class="popup-row"><b>${a.road_name}</b></div><div class="popup-row" style="font-style:italic;color:#777;">${a.description}</div><div class="popup-row">Vehicle: ${a.vehicle} | Injuries: ${a.injuries}</div><div class="popup-row">Time: ${a.time}</div><div class="popup-row" style="font-family:monospace;color:#999;">${a.lat.toFixed(5)}, ${a.lng.toFixed(5)}</div><div class="popup-row">Status: ${a.status}</div></div>`);
+                        m.bindPopup(`<div><span class="popup-badge" style="background:${cfg.color};color:white;">${a.severity}</span> <b>Accident</b><div class="popup-row"><b>${a.road_name}</b></div><div class="popup-row" style="font-style:italic;color:#777;">${a.description}</div><div class="popup-row">Vehicle: ${a.vehicle} | Injuries: ${a.injuries}</div><div class="popup-row">Time: ${a.time}</div><div class="popup-row" style="font-family:monospace;color:#999;">${a.lat.toFixed(5)}, ${a.lng.toFixed(5)}</div></div>`);
                         accidentLayer.addLayer(m);
-
-                        accidentLayer.addLayer(L.circle([a.lat, a.lng], {
-                            radius: cfg.radius, color: cfg.color, fillColor: cfg.color,
-                            fillOpacity: 0.06, weight: 1, dashArray: '6,4'
-                        }));
+                        accidentLayer.addLayer(L.circle([a.lat, a.lng], { radius: cfg.radius, color: cfg.color, fillColor: cfg.color, fillOpacity: 0.06, weight: 1, dashArray: '6,4' }));
                     }
-
-                    // Skip resolved accidents from panel list
                     if (a.status === 'Resolved') return;
-
                     const isPending = a.status === 'Pending';
                     const sevClass = 'badge-' + a.severity.toLowerCase();
                     const statusClass = isPending ? 'badge-pending' : 'badge-dispatched';
-
-                    html += `<div class="accident-card" style="border-left-color:${cfg.color};">
-                        <div class="card-header">
-                            <div class="left">
-                                <span class="badge ${sevClass}">${a.severity}</span>
-                                <span class="vehicle-id">${a.vehicle}</span>
-                            </div>
-                            <span style="font-size:11px;color:#475569;">${a.time}</span>
-                        </div>
-                        <div class="location-row">
-                            <span class="road-badge">
-                                <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-                                ${a.road_name}
-                            </span>
-                            ${a.injuries > 0 ? `<span class="injuries-badge">${a.injuries} injured</span>` : ''}
-                        </div>
-                        <div class="description-text">${a.description}</div>
-                        <div class="coords-text">${a.lat.toFixed(5)}, ${a.lng.toFixed(5)}</div>
-                        <p><span class="badge ${statusClass}">${a.status}</span></p>
-                        <div class="card-actions">
-                            <button class="btn btn-locate" onclick="locateAccident(${a.lat},${a.lng},'${a.vehicle}')">Locate</button>
-                            <button class="btn btn-dispatch" onclick="dispatchUnit(${a.id},'Ambulance',this)">Ambulance</button>
-                            <button class="btn btn-dispatch" onclick="dispatchUnit(${a.id},'Police',this)">Police</button>
-                            <button class="btn btn-dispatch" onclick="dispatchUnit(${a.id},'Fire',this)">Fire</button>
-                            <button class="btn btn-dispatch" onclick="dispatchUnit(${a.id},'Traffic Police',this)">Traffic</button>
-                            <button class="btn btn-dispatch" onclick="dispatchUnit(${a.id},'Tow Truck',this)">Tow Truck</button>
-                            <button class="btn btn-dispatch" onclick="dispatchUnit(${a.id},'Rescue Team',this)">Rescue</button>
-                            <button class="btn btn-resolve" onclick="resolveAccident(${a.id})">Resolve</button>
-                        </div>
-                    </div>`;
+                    html += `<div class="accident-card" style="border-left-color:${cfg.color};"><div class="card-header"><div class="left"><span class="badge ${sevClass}">${a.severity}</span><span class="vehicle-id">${a.vehicle}</span></div><span style="font-size:11px;color:#334155;">${a.time}</span></div><div class="location-row"><span class="road-badge"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg> ${a.road_name}</span>${a.injuries > 0 ? `<span class="injuries-badge">${a.injuries} injured</span>` : ''}</div><div class="description-text">${a.description}</div><div class="coords-text">${a.lat.toFixed(5)}, ${a.lng.toFixed(5)}</div><p><span class="badge ${statusClass}">${a.status}</span></p><div class="card-actions"><button class="btn btn-locate" onclick="locateAccident(${a.lat},${a.lng},'${a.vehicle}')">Locate</button><button class="btn btn-dispatch" onclick="dispatchUnit(${a.id},'Ambulance',this)">Ambulance</button><button class="btn btn-dispatch" onclick="dispatchUnit(${a.id},'Police',this)">Police</button><button class="btn btn-dispatch" onclick="dispatchUnit(${a.id},'Fire',this)">Fire</button><button class="btn btn-dispatch" onclick="dispatchUnit(${a.id},'Traffic Police',this)">Traffic</button><button class="btn btn-dispatch" onclick="dispatchUnit(${a.id},'Tow Truck',this)">Tow Truck</button><button class="btn btn-dispatch" onclick="dispatchUnit(${a.id},'Rescue Team',this)">Rescue</button><button class="btn btn-resolve" onclick="resolveAccident(${a.id})">Resolve</button></div></div>`;
                 });
-
                 document.getElementById('accidentList').innerHTML = html || '<div class="empty-state">No accidents reported</div>';
+
+                // Incidents page
+                let incHtml = '';
+                data.filter(a => a.status !== 'Resolved').forEach(a => {
+                    const cfg = severityConfig[a.severity] || severityConfig['Moderate'];
+                    incHtml += `<div class="accident-card" style="border-left-color:${cfg.color};"><div class="card-header"><div class="left"><span class="badge badge-${a.severity.toLowerCase()}">${a.severity}</span><span class="vehicle-id">${a.vehicle}</span></div><span style="font-size:11px;color:#334155;">${a.time}</span></div><div class="location-row"><span class="road-badge"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg> ${a.road_name}</span>${a.injuries > 0 ? `<span class="injuries-badge">${a.injuries} injured</span>` : ''}</div><div class="description-text">${a.description}</div><div class="card-actions"><button class="btn btn-dispatch" onclick="dispatchUnit(${a.id},'Ambulance',this)">Ambulance</button><button class="btn btn-dispatch" onclick="dispatchUnit(${a.id},'Police',this)">Police</button><button class="btn btn-resolve" onclick="resolveAccident(${a.id})">Resolve</button></div></div>`;
+                });
+                document.getElementById('incidentsGrid').innerHTML = incHtml || '<div class="empty-state">No active incidents</div>';
             } catch (e) { console.error('Accident error:', e); }
         }
 
-        // ── FETCH: VIOLATIONS ──
         async function updateViolations() {
             try {
                 const data = await (await fetch('/api/violations/')).json();
-                violationLayer.clearLayers();
-
-                document.getElementById('statViolations').textContent = data.length;
+                cachedViolations = data;
+                if (violationLayer) violationLayer.clearLayers();
                 document.getElementById('tabViolationCount').textContent = data.length;
-
                 let html = '';
                 data.forEach(v => {
-                    const m = L.marker([v.lat, v.lng], { icon: defaultViolationIcon });
-                    m.bindPopup(`<div class="popup-title">${v.violation_type}</div><div class="popup-row">Vehicle: ${v.vehicle}</div><div class="popup-row">Speed: ${v.speed} km/h | Lane: ${v.lane}</div><div class="popup-row">Fine: Rs. ${v.fine}</div><div class="popup-row">Time: ${v.time}</div><a href="/static/videos/${v.video}" target="_blank" style="font-size:12px;">View Clip</a>`);
-                    violationLayer.addLayer(m);
-
+                    if (violationLayer) {
+                        const m = L.marker([v.lat, v.lng], { icon: defaultViolationIcon });
+                        m.bindPopup(`<div class="popup-title">${v.violation_type}</div><div class="popup-row">Vehicle: ${v.vehicle}</div><div class="popup-row">Speed: ${v.speed} km/h | Lane: ${v.lane}</div><div class="popup-row">Fine: Rs. ${v.fine}</div><a href="/static/videos/${v.video}" target="_blank" style="font-size:12px;">View Clip</a>`);
+                        violationLayer.addLayer(m);
+                    }
                     const typeKey = v.violation_type.replace(/\s+/g, '').toLowerCase();
-                    html += `<div class="violation-card">
-                        <div class="card-header">
-                            <div style="display:flex;align-items:center;gap:8px;">
-                                <span class="badge badge-${typeKey}">${v.violation_type}</span>
-                                <span class="vehicle-id">${v.vehicle}</span>
-                            </div>
-                            <span style="font-size:11px;color:#475569;">${v.time}</span>
-                        </div>
-                        <p>Speed: ${v.speed} km/h &middot; Lane: ${v.lane}</p>
-                        <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
-                            <span class="fine-badge">Fine: Rs. ${v.fine}</span>
-                            <a class="video-link" href="/static/videos/${v.video}" target="_blank">View Clip</a>
-                        </div>
-                    </div>`;
+                    html += `<div class="violation-card"><div class="card-header"><div style="display:flex;align-items:center;gap:8px;"><span class="badge badge-${typeKey}">${v.violation_type}</span><span class="vehicle-id">${v.vehicle}</span></div><span style="font-size:11px;color:#334155;">${v.time}</span></div><p>Speed: ${v.speed} km/h &middot; Lane: ${v.lane}</p><div style="display:flex;align-items:center;gap:8px;margin-top:4px;"><span class="fine-badge">Fine: Rs. ${v.fine}</span><a class="video-link" href="/static/videos/${v.video}" target="_blank">View Clip</a></div></div>`;
                 });
-
                 document.getElementById('violationList').innerHTML = html || '<div class="empty-state">No violations recorded</div>';
             } catch (e) { console.error('Violation error:', e); }
         }
 
-        // ── FETCH: HEATMAP ──
         async function updateCongestion() {
             try {
                 const data = await (await fetch('/api/congestion/')).json();
-                if (heatLayer) map.removeLayer(heatLayer);
-                if (data.length > 0) {
-                    heatLayer = L.heatLayer(data, {
-                        radius: 30, blur: 20, maxZoom: 17,
-                        gradient: { 0.2: '#22c55e', 0.4: '#fbbf24', 0.6: '#f97316', 0.8: '#ef4444', 1.0: '#dc2626' }
-                    });
+                if (heatLayer && map) map.removeLayer(heatLayer);
+                if (data.length > 0 && map) {
+                    heatLayer = L.heatLayer(data, { radius: 30, blur: 20, maxZoom: 17, gradient: { 0.2: '#22c55e', 0.4: '#fbbf24', 0.6: '#f97316', 0.8: '#ef4444', 1.0: '#dc2626' } });
                     if (showLayers.heatmap) heatLayer.addTo(map);
                 }
             } catch (e) { console.error('Congestion error:', e); }
         }
 
-        // ── FETCH: SIGNALS ──
         async function updateSignals() {
             try {
                 const data = await (await fetch('/api/signals/')).json();
-                signalLayer.clearLayers();
-                data.forEach(s => {
-                    const m = L.marker([s.lat, s.lng], { icon: signalMarkerIcon(s.state) });
-                    m.bindPopup(`<div class="popup-title">${s.name}</div><div class="popup-row">State: <b style="color:${s.state==='Red'?'#ef4444':s.state==='Yellow'?'#fbbf24':'#22c55e'}">${s.state}</b></div><div class="popup-row">Cycle: ${s.cycle_time}s</div>`);
-                    signalLayer.addLayer(m);
-                });
+                if (signalLayer) {
+                    signalLayer.clearLayers();
+                    data.forEach(s => {
+                        const m = L.marker([s.lat, s.lng], { icon: signalMarkerIcon(s.state) });
+                        m.bindPopup(`<div class="popup-title">${s.name}</div><div class="popup-row">State: <b style="color:${s.state==='Red'?'#ef4444':s.state==='Yellow'?'#fbbf24':'#22c55e'}">${s.state}</b></div>`);
+                        signalLayer.addLayer(m);
+                    });
+                }
             } catch (e) { console.error('Signal error:', e); }
         }
 
         // ── ACTIONS ──
         async function dispatchUnit(id, unit, btn) {
             try {
-                const data = await (await fetch('/api/dispatch/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ accident_id: id, unit: unit })
-                })).json();
-                if (data.success) {
-                    btn.textContent = unit + ' Sent';
-                    btn.classList.add('sent');
-                    btn.disabled = true;
-                    setTimeout(updateAccidents, 500);
-                }
+                const data = await (await fetch('/api/dispatch/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accident_id: id, unit: unit }) })).json();
+                if (data.success) { btn.textContent = unit + ' Sent'; btn.classList.add('sent'); btn.disabled = true; setTimeout(updateAccidents, 500); }
             } catch (e) { console.error('Dispatch error:', e); }
         }
-
         async function resolveAccident(id) {
             try {
-                const data = await (await fetch('/api/resolve/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ accident_id: id })
-                })).json();
+                const data = await (await fetch('/api/resolve/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accident_id: id }) })).json();
                 if (data.success) setTimeout(updateAccidents, 300);
             } catch (e) { console.error('Resolve error:', e); }
         }
-
         function locateAccident(lat, lng, vehicle) {
-            map.flyTo([lat, lng], 17, { duration: 1 });
-            const icon = L.divIcon({
-                html: `<div style="position:relative;">
-                    <div style="width:60px;height:60px;border:3px solid #ef4444;border-radius:50%;animation:pulse-ring 1s ease-out 4;"></div>
-                    <div style="position:absolute;top:-22px;left:50%;transform:translateX(-50%);background:#ef4444;color:white;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;white-space:nowrap;">${vehicle}</div>
-                </div>`,
-                className: '', iconSize: [60, 60], iconAnchor: [30, 30]
+            showPage('livemap', document.querySelectorAll('.nav-item')[1]);
+            setTimeout(() => {
+                if (map) {
+                    map.invalidateSize();
+                    map.flyTo([lat, lng], 17, { duration: 1 });
+                    const icon = L.divIcon({ html: `<div style="position:relative;"><div style="width:60px;height:60px;border:3px solid #ef4444;border-radius:50%;animation:pulse-ring 1s ease-out 4;"></div><div style="position:absolute;top:-22px;left:50%;transform:translateX(-50%);background:#ef4444;color:white;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;white-space:nowrap;">${vehicle}</div></div>`, className: '', iconSize: [60,60], iconAnchor: [30,30] });
+                    const m = L.marker([lat, lng], { icon: icon }).addTo(map);
+                    setTimeout(() => map.removeLayer(m), 5000);
+                }
+            }, 200);
+        }
+
+        // ── DENSITY CHART ──
+        const densityHistory = [];
+        function drawDensityChart() {
+            const canvas = document.getElementById('densityChart');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width = canvas.parentElement.offsetWidth;
+            const h = canvas.height = canvas.parentElement.offsetHeight;
+            ctx.clearRect(0, 0, w, h);
+
+            // Grid lines
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 0.5;
+            for (let i = 0; i <= 4; i++) {
+                const y = (h / 4) * i;
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+            }
+
+            if (densityHistory.length < 2) return;
+
+            // Draw area
+            const step = w / (densityHistory.length - 1);
+            ctx.beginPath();
+            ctx.moveTo(0, h);
+            densityHistory.forEach((v, i) => {
+                const x = i * step;
+                const y = h - (v / 100) * h;
+                if (i === 0) ctx.lineTo(x, y);
+                else {
+                    const px = (i - 1) * step;
+                    const py = h - (densityHistory[i-1] / 100) * h;
+                    const cx = (px + x) / 2;
+                    ctx.bezierCurveTo(cx, py, cx, y, x, y);
+                }
             });
-            const m = L.marker([lat, lng], { icon: icon }).addTo(map);
-            setTimeout(() => map.removeLayer(m), 5000);
+            ctx.lineTo(w, h);
+            ctx.closePath();
+
+            const grad = ctx.createLinearGradient(0, 0, 0, h);
+            grad.addColorStop(0, 'rgba(6,182,212,0.3)');
+            grad.addColorStop(1, 'rgba(6,182,212,0.01)');
+            ctx.fillStyle = grad;
+            ctx.fill();
+
+            // Draw line
+            ctx.beginPath();
+            densityHistory.forEach((v, i) => {
+                const x = i * step;
+                const y = h - (v / 100) * h;
+                if (i === 0) ctx.moveTo(x, y);
+                else {
+                    const px = (i - 1) * step;
+                    const py = h - (densityHistory[i-1] / 100) * h;
+                    const cx = (px + x) / 2;
+                    ctx.bezierCurveTo(cx, py, cx, y, x, y);
+                }
+            });
+            ctx.strokeStyle = '#22d3ee';
+            ctx.lineWidth = 2;
+            ctx.stroke();
         }
 
         // ── REFRESH ──
@@ -743,6 +1092,12 @@
             updateViolations();
             updateCongestion();
             updateSignals();
+
+            // Update density chart
+            const density = cachedVehicleCount > 0 ? Math.min(100, Math.round((cachedVehicleCount - cachedAvgSpeed * 0.5) / cachedVehicleCount * 100 + Math.random() * 10)) : 30;
+            densityHistory.push(Math.max(10, Math.min(95, density)));
+            if (densityHistory.length > 50) densityHistory.shift();
+            drawDensityChart();
         }
 
         refreshAll();

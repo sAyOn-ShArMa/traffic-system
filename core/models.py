@@ -67,6 +67,25 @@ class Violation(models.Model):
         return f"{self.vehicle} - {self.violation_type} ({self.speed:.0f} km/h)"
 
 
+class Operator(models.Model):
+    ROLE_CHOICES = [
+        ('Admin', 'Admin'),
+        ('Operator', 'Operator'),
+        ('Supervisor', 'Supervisor'),
+    ]
+
+    operator_id = models.CharField(max_length=20, unique=True)
+    name = models.CharField(max_length=100)
+    password = models.CharField(max_length=128)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='Operator')
+    is_active = models.BooleanField(default=True)
+    last_login = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.operator_id} - {self.name} ({self.role})"
+
+
 class TrafficSignal(models.Model):
     SIGNAL_STATES = [
         ('Red', 'Red'),
