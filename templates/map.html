@@ -562,11 +562,149 @@
         @keyframes pulse-ring { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(3); opacity: 0; } }
         .accident-pulse { animation: pulse-ring 1.5s ease-out infinite; }
         @keyframes fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ── HAMBURGER BUTTON ── */
+        .hamburger-btn {
+            display: none;
+            position: fixed;
+            top: 14px;
+            left: 14px;
+            z-index: 3000;
+            background: #0d1117;
+            border: 1px solid #1a2332;
+            border-radius: 10px;
+            width: 40px;
+            height: 40px;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-direction: column;
+            gap: 5px;
+            padding: 8px;
+        }
+
+        .hamburger-btn span {
+            display: block;
+            width: 20px;
+            height: 2px;
+            background: #94a3b8;
+            border-radius: 2px;
+            transition: all 0.3s;
+        }
+
+        /* Sidebar overlay backdrop */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 1999;
+        }
+
+        .sidebar-overlay.active { display: block; }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 768px) {
+            body { overflow: hidden; }
+
+            .hamburger-btn { display: flex; }
+
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                height: 100%;
+                z-index: 2000;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+                width: 220px;
+            }
+
+            .sidebar.open { transform: translateX(0); }
+
+            .main { width: 100%; }
+
+            /* Dashboard header */
+            .dash-header {
+                padding: 16px 16px 12px 62px;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            .dash-header h2 { font-size: 20px; }
+
+            .system-badge { font-size: 10px; padding: 6px 12px; }
+
+            /* Dashboard stats: 2 columns */
+            .dash-content { padding: 0 16px 20px; }
+
+            .dash-stats {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+                margin-bottom: 16px;
+            }
+
+            .dash-stat-card { padding: 16px; }
+            .dash-stat-card .stat-value { font-size: 26px; }
+
+            /* Stack chart and events */
+            .dash-bottom {
+                grid-template-columns: 1fr;
+            }
+
+            /* Incidents */
+            .incidents-header {
+                padding: 16px 16px 12px 62px;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            .incidents-header h2 { font-size: 20px; }
+
+            .incidents-content { padding: 0 16px 20px; }
+
+            .incidents-grid { grid-template-columns: 1fr; }
+
+            /* Settings */
+            .settings-content { padding: 16px 16px 16px 62px; }
+            .settings-content h2 { font-size: 20px; margin-bottom: 16px; }
+
+            /* Map page overlays */
+            .map-panel {
+                width: calc(100vw - 32px);
+                max-width: 380px;
+                right: 16px;
+                top: 16px;
+                max-height: 50vh;
+            }
+
+            .map-protocol {
+                width: calc(100vw - 32px);
+                max-width: 260px;
+                bottom: 24px;
+            }
+
+            .map-sector-badge { padding: 10px 14px; }
+            .sector-icon { width: 32px; height: 32px; }
+            .sector-text .sector-name { font-size: 12px; }
+        }
+
+        @media (max-width: 480px) {
+            .dash-stats { grid-template-columns: 1fr 1fr; gap: 8px; }
+            .dash-stat-card .stat-value { font-size: 22px; }
+            .map-panel { max-height: 40vh; }
+        }
     </style>
 </head>
 <body>
+    <!-- ── MOBILE HAMBURGER ── -->
+    <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleSidebar()" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+    </button>
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
     <!-- ── SIDEBAR ── -->
-    <div class="sidebar">
+    <div class="sidebar" id="sidebar">
         <div class="sidebar-brand">
             <div class="brand-icon">
                 <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
@@ -783,6 +921,14 @@
     </div>
 
     <script>
+        // ── SIDEBAR TOGGLE (MOBILE) ──
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('active');
+        }
+
         // ── PAGE NAVIGATION ──
         let mapInitialized = false;
         let map, vehicleLayer, accidentLayer, violationLayer, signalLayer, heatLayer = null;
@@ -801,6 +947,14 @@
             }
             if (page === 'livemap' && map) {
                 setTimeout(() => map.invalidateSize(), 100);
+            }
+
+            // Close sidebar on mobile after navigation
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (sidebar.classList.contains('open')) {
+                sidebar.classList.remove('open');
+                overlay.classList.remove('active');
             }
         }
 
